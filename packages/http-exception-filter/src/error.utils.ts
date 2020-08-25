@@ -1,5 +1,15 @@
 import { ValidationError } from 'class-validator';
 import { isEmpty, snakeCase, toUpper } from 'lodash';
+import { HttpException } from '@nestjs/common';
+
+export function isHttpException(exception: Error): exception is HttpException {
+  return exception instanceof HttpException ||
+    (
+      typeof (exception as HttpException).getStatus === 'function' &&
+      typeof (exception as HttpException).getResponse === 'function'
+    );
+}
+
 /**
  *
  * Extract the stringified error code

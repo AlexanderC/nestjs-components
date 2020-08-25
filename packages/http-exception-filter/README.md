@@ -44,15 +44,16 @@ export class CoreModule {}
 Example 2:
 
 ```typescript
-import { NestFactory} from '@nestjs/core';
-import {HttpExceptionFilter} from '@algoan/nestjs-http-exception-filter';
+import { NestFactory, HttpAdapterHost } from '@nestjs/core';
+import { HttpExceptionFilter } from '@algoan/nestjs-http-exception-filter';
 import { MainModule } from './main.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(MainModule,{
   });
 
-  app.useGlobalFilters(new HttpExceptionFilter());
+  const httpAdapterHost = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new HttpExceptionFilter(<any>httpAdapterHost));
   await app.listen(3000);
   console.log(`App listening on port 3000`)
 }

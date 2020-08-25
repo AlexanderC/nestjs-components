@@ -1,8 +1,8 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, Logger } from '@nestjs/common';
 import { HttpArgumentsHost } from '@nestjs/common/interfaces';
-import { Response } from 'express';
+import { HttpAdapterHost } from '@nestjs/core';
 import { get } from 'lodash';
-import { getCode, getErrorMessage } from './error.utils';
+import { getCode, getErrorMessage, isHttpException } from './error.utils';
 
 /**
  * Catch and format thrown exception in NestJS application based on Express
@@ -11,17 +11,20 @@ import { getCode, getErrorMessage } from './error.utils';
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger: Logger = new Logger(HttpExceptionFilter.name);
 
+  constructor(private readonly httpAdapterHost: HttpAdapterHost) {  }
+
   /**
    * Catch and format thrown exception
    */
   // tslint:disable-next-line: no-any
   public catch(exception: any, host: ArgumentsHost): void {
+    const adapter = this.httpAdapterHost.httpAdapter;
     const ctx: HttpArgumentsHost = host.switchToHttp();
-    const request: Request = ctx.getRequest();
-    const response: Response = ctx.getResponse();
+    const request = ctx.getRequest();
+    const response = ctx.getResponse();
     let status: number;
 
-    if (exception instanceof HttpException) {
+    if (isHttpException(exception)) {
       status = exception.getStatus();
     } else {
       // Case of a PayloadTooLarge
@@ -30,13 +33,13 @@ export class HttpExceptionFilter implements ExceptionFilter {
     }
 
     let code: string =
-      exception instanceof HttpException
+      isHttpException(exception)
         ? getCode(exception.getResponse())
         : HttpStatus[HttpStatus.INTERNAL_SERVER_ERROR];
     let message: string =
-      exception instanceof HttpException
+      isHttpException(exception)
         ? getErrorMessage(exception.getResponse())
-        : 'An internal server error occurred, please contact us at dev-team@algoan.com';
+        : 'An internal server error occurred.';
 
     if (status === HttpStatus.PAYLOAD_TOO_LARGE) {
       code = HttpStatus[HttpStatus.PAYLOAD_TOO_LARGE];
@@ -61,10 +64,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
         headers: request.headers,
       });
     }
-    response.status(status).send({
+    adapter.reply(response, {
       code,
       message,
       status,
-    });
+    }, status);
   }
 }
